@@ -4,6 +4,7 @@ import "dotenv/config";
 import dotenv from "dotenv";
 import connectDB from "./config/mongodb.js";
 import connectCloudinary from "./config/cloudinary.js";
+import adminRouter from "./routers/adminRoute.js";
 
 // app config
 const app = express();
@@ -17,7 +18,9 @@ app.use(cors());
 app.use(express.json());
 
 // Api End Points
+app.use("/api/admin", adminRouter);
 
+// default route
 app.get("/", (req, res) => {
   res.send("API Working");
 });
