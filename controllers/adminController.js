@@ -38,7 +38,15 @@ const addDoctor = async (req, res) => {
         .status(StatusCodes.BAD_REQUEST)
         .json({ success: false, message: "All fields are required" });
     }
+    const parsedAddress =
+      typeof address === "string" ? JSON.parse(address) : address;
 
+    // Validate address format
+    if (!parsedAddress.line1 || !parsedAddress.line2) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ success: false, message: "Invalid address format" });
+    }
     if (!validator.isEmail(email)) {
       return res
         .status(StatusCodes.BAD_REQUEST)
@@ -74,7 +82,7 @@ const addDoctor = async (req, res) => {
       degree,
       about,
       fees,
-      address: JSON.parse(address),
+      address: parsedAddress,
       date: Date.now(),
     };
 
@@ -127,4 +135,22 @@ const loginAdmin = async (req, res) => {
   }
 };
 
-export { addDoctor, loginAdmin };
+const allDoctors = async (req, res) => {
+  try {
+    const doctors = await doctorModel.find({}).select("-password");
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Doctors retrieved successfully",
+      data: doctors,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to retrieve doctors",
+      error: error.message,
+    });
+  }
+};
+
+export { addDoctor, loginAdmin, allDoctors };
