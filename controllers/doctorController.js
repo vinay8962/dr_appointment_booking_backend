@@ -24,4 +24,22 @@ const changeAvailability = async (req, res) => {
   }
 };
 
-export { changeAvailability };
+const doctorList = async (req, res) => {
+  try {
+    const doctors = await doctorModel.find({}).select(["-password", "-email"]);
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Doctor list retrieved successfully",
+      data: doctors,
+    });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to retrieve doctor list",
+      error: error.message,
+    });
+  }
+};
+
+export { changeAvailability, doctorList };

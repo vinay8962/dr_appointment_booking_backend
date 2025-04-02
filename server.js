@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import connectDB from "./config/mongodb.js";
 import connectCloudinary from "./config/cloudinary.js";
 import adminRouter from "./routers/adminRoute.js";
+import doctorRoute from "./routers/doctorRoute.js";
+import userRoute from "./routers/userRoute.js";
 
 // app config
 const app = express();
@@ -20,6 +22,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Api End Points
 app.use("/api/admin", adminRouter);
+app.use("/api/doctor", doctorRoute);
+app.use("/api/user", userRoute);
 
 // default route
 app.get("/", (req, res) => {
