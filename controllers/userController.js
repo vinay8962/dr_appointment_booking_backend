@@ -4,7 +4,7 @@ import userModel from "../models/userModel.js";
 import jwt from "jsonwebtoken";
 import { StatusCodes } from "http-status-codes";
 import { v2 as cloudinary } from "cloudinary";
-
+import doctorModel from "../models/doctorModel.js";
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -199,4 +199,41 @@ const updateProfile = async (req, res) => {
   }
 };
 
-export { registerUser, loginUser, getProfile, updateProfile };
+const bookAppointment = async (req, res) => {
+  try {
+    const { userId, docId, slotDate, slotTime } = req.body;
+
+    const docData = await doctorModel.findById(docId).select("-password");
+    if (!docData.available) {
+      return res.status(StatusCodes).json({
+        success: false,
+        message: "Doctor not available",
+      });
+    }
+
+    let slots_booked = docData.slots_booked;
+
+    // checking fot slot availability
+
+    if (slots_booked[slotDate]) {
+      if (slots_booked[slotDate].includes(slotTime)) {
+        return res.status(StatusCodes).json({
+          success: false,
+          message: "Slot not available",
+        });
+      } else {
+        slots_booked[slotDate].push(slotTime);
+      }
+    } else {
+      slots_booked[slotDate] = [];
+      slots_booked[slotDate].push(slotTime);
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+export { registerUser, loginUser, getProfile, updateProfile, bookAppointment };
