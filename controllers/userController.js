@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { StatusCodes } from "http-status-codes";
 import { v2 as cloudinary } from "cloudinary";
 import doctorModel from "../models/doctorModel.js";
+import appointmentModel from "../models/appointmentModel.js";
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -228,6 +229,31 @@ const bookAppointment = async (req, res) => {
       slots_booked[slotDate] = [];
       slots_booked[slotDate].push(slotTime);
     }
+    const userData = await userModel.findById(userId).select("-password");
+    delete docData.slots_booked;
+
+    const appointmentData = {
+      userId,
+      docId,
+      userData,
+      docData,
+      amount: docData.fees,
+      slotTime,
+      slotDate,
+      date: Date.now(),
+    };
+
+    const newAppointment = new appointmentModel();
+    await newAppointment.save();
+
+    // save new slots data in dpcData
+    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Appointment booked successfully",
+      data: appointmentData,
+    });
   } catch (error) {
     console.log(error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
