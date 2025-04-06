@@ -6,6 +6,7 @@ import { StatusCodes } from "http-status-codes";
 import { v2 as cloudinary } from "cloudinary";
 import doctorModel from "../models/doctorModel.js";
 import appointmentModel from "../models/appointmentModel.js";
+import Razorpay from "razorpay";
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -206,7 +207,7 @@ const bookAppointment = async (req, res) => {
 
     const docData = await doctorModel.findById(docId).select("-password");
     if (!docData.available) {
-      return res.status(StatusCodes).json({
+      return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
         message: "Doctor not available",
       });
@@ -218,7 +219,7 @@ const bookAppointment = async (req, res) => {
 
     if (slots_booked[slotDate]) {
       if (slots_booked[slotDate].includes(slotTime)) {
-        return res.status(StatusCodes).json({
+        return res.status(StatusCodes.BAD_REQUEST).json({
           success: false,
           message: "Slot not available",
         });
@@ -242,8 +243,8 @@ const bookAppointment = async (req, res) => {
       slotDate,
       date: Date.now(),
     };
-
-    const newAppointment = new appointmentModel();
+    // console.log(appointmentData);
+    const newAppointment = new appointmentModel(appointmentData);
     await newAppointment.save();
 
     // save new slots data in dpcData
@@ -262,4 +263,127 @@ const bookAppointment = async (req, res) => {
     });
   }
 };
-export { registerUser, loginUser, getProfile, updateProfile, bookAppointment };
+
+const listAppointment = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const appointments = await appointmentModel.find({ userId });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Appointments fetched successfully",
+      data: appointments,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+const cancelAppointment = async (req, res) => {
+  try {
+    const { userId, appointmentId } = req.body;
+    // Find the appointment by ID and userId
+    const appointmentData = await appointmentModel.findById(appointmentId);
+    //  Check if the appointment exists and belongs to the user
+    if (appointmentData.userId !== userId) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        success: false,
+        message: "Appointment not found or does not belong to the user.",
+      });
+    }
+    // Update the appointment status to cancelled
+    await appointmentModel.findByIdAndUpdate(appointmentId, {
+      cancelled: true,
+    });
+
+    //   Release the slot in the doctor's schedule
+    const { docId, slotTime, slotDate } = appointmentData;
+
+    const doctorData = await doctorModel.findById(docId);
+
+    let slots_booked = doctorData.slots_booked;
+
+    if (slots_booked[slotDate]) {
+      slots_booked[slotDate] = slots_booked[slotDate].filter(
+        (e) => e !== slotTime
+      );
+
+      // Clean up if no slots remain
+      if (slots_booked[slotDate].length === 0) {
+        delete slots_booked[slotDate];
+      }
+    }
+
+    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Appointment cancelled successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+//  api to make payment of appointment using razorpay
+
+const razorpayInstance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+const paymentRazorpay = async (req, res) => {
+  try {
+    const { appointmentId } = req.body;
+    console.log(appointmentId);
+    // Validate appointment
+    const appointmentData = await appointmentModel.findById(appointmentId);
+    if (!appointmentData || appointmentData.cancelled) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: "Appointment not found or already cancelled",
+      });
+    }
+
+    // Prepare Razorpay order options
+    const options = {
+      amount: appointmentData.amount * 100, // amount in paise
+      currency: process.env.CURRENCY || "INR",
+      receipt: appointmentId,
+    };
+
+    // Create order in Razorpay
+    const order = await razorpayInstance.orders.create(options);
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Payment order created successfully",
+      data: order,
+    });
+  } catch (error) {
+    console.log("Razorpay payment error:", error);
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Something went wrong while creating payment order",
+    });
+  }
+};
+
+export {
+  registerUser,
+  loginUser,
+  getProfile,
+  updateProfile,
+  bookAppointment,
+  listAppointment,
+  cancelAppointment,
+  paymentRazorpay,
+};

@@ -1,8 +1,11 @@
 import express from "express";
 import {
   bookAppointment,
+  cancelAppointment,
   getProfile,
+  listAppointment,
   loginUser,
+  paymentRazorpay,
   registerUser,
   updateProfile,
 } from "../controllers/userController.js";
@@ -21,5 +24,8 @@ userRoute.post(
   updateProfile
 );
 userRoute.post("/book-appointment", authUser, bookAppointment);
+userRoute.get("/list-appointment", authUser, listAppointment);
+userRoute.post("/cancel-appointment", authUser, cancelAppointment);
+userRoute.post("/payment-razorpay", authUser, paymentRazorpay);
 
 export default userRoute;
