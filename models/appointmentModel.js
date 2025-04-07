@@ -6,7 +6,7 @@ const appointmentSchema = new mongoose.Schema({
   slotId: { type: String, require: true },
   slotTime: { type: String, require: true },
   slotDate: { type: String, require: true },
-  userDate: { type: Object, require: true },
+  userData: { type: Object, require: true },
   docData: { type: Object, require: true },
   amount: { type: Number, require: true },
   date: { type: Number, require: true },
