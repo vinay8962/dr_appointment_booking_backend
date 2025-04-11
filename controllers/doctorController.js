@@ -160,6 +160,92 @@ const appointmentCancel = async (req, res) => {
   }
 };
 
+// API to get dashboard data for doctor panel
+
+const doctorDashboard = async (req, res) => {
+  try {
+    const { docId } = req.body;
+
+    const appointments = await appointmentModel.find({ docId });
+    let earnings = 0;
+
+    appointments.forEach((item) => {
+      if (item.isCompleted || item.payment) {
+        earnings += item.amount;
+      }
+    });
+
+    let patients = [];
+    appointments.forEach((item) => {
+      if (!patients.includes(item.userId.toString())) {
+        patients.push(item.userId.toString());
+      }
+    });
+
+    const dashboard = {
+      earnings,
+      appointments: appointments.length,
+      patients: patients.length,
+      latestAppointments: [...appointments].reverse().slice(0, 5),
+    };
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Dashboard data retrieved successfully",
+      data: dashboard,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+//  APi to get doctor profile for doctor panel
+const doctorProfile = async (req, res) => {
+  try {
+    const { docId } = req.body;
+    const profileData = await doctorModel.findById(docId).select("-password");
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Doctor profile retrieved successfully.",
+      data: profileData,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+//  API to update doctor profile for doctor panel
+const updateDoctorProfile = async (req, res) => {
+  try {
+    const { docId, fees, address, available } = req.body;
+    await doctorModel.findByIdAndUpdate(docId, {
+      fees,
+      address,
+      available,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Profile updated successfully.",
+    });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "An error occurred while updating the profile.",
+      error: error.message,
+    });
+  }
+};
+
 export {
   changeAvailability,
   doctorList,
@@ -167,4 +253,7 @@ export {
   doctorAppointment,
   appointmentComplete,
   appointmentCancel,
+  doctorDashboard,
+  doctorProfile,
+  updateDoctorProfile,
 };
